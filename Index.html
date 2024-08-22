@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leitura de Cartão de Crédito e Débito</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <h1>Leitura de Cartão de Crédito e Débito</h1>
+  <button id="readCardButton" onclick="readCard()">Read Card</button>
+  <button id="copyCardButton" onclick="copyCardData()">Copy Card Data</button>
+  <button id="pasteCardButton" onclick="pasteCardDataToWriter()">Paste Card Data to Writer</button>
+
+  <script>
+    // Função para ler o cartão
+    function readCard() {
+      // Verificar se a leitora de cartões está disponível
+      if (nfcReader) {
+        // Inicializar a leitora de cartões
+        nfcReader.initialize().then(() => {
+          // Ler o cartão
+          nfcReader.transceive("00A4040007A0000000031010").then((response) => {
+            // Processar a resposta
+            const cardData = processCardData(response);
+            console.log("Card data:", cardData);
+          }).catch((error) => {
+            console.error("Error reading card:", error);
+          });
+        }).catch((error) => {
+          console.error("Error initializing reader:", error);
+        });
+      } else {
+        console.error("No NFC reader available");
+      }
+    }
+
+    // Função para processar os dados do cartão
+    function processCardData(response) {
+      // Decodificar a resposta
+      const cardData = {};
+      const responseBytes = new Uint8Array(response);
+      const cardNumber = bytesToHexString(responseBytes.subarray(0, 16));
+      const expirationDate = bytesToHexString(responseBytes.subarray(16, 20));
+      const cardholderName = bytesToHexString(responseBytes.subarray(20, 40));
+      cardData.cardNumber = cardNumber;
+      cardData.expirationDate = expirationDate;
+      cardData.cardholderName = cardholderName;
+      return cardData;
+    }
+
+    // Função para converter bytes para uma string hexadecimal
+    function bytesToHexString(bytes) {
+      return Array.prototype.map.call(bytes, function(byte) {
+        return ("0" + byte.toString(16)).slice(-2);
+      }).join("");
+    }
+
+    // Função para copiar os dados do cartão
+    function copyCardData() {
+      // Verificar se o usuário autorizou a cópia dos dados do cartão
+      if (confirm("Você autoriza a cópia dos dados do cartão?")) {
+        // Ler os dados do cartão
+        readCard().then((cardData) => {
+          // Copiar os dados do cartão para a área de transferência
+          navigator.clipboard.writeText(JSON.stringify(cardData)).then(() => {
+            console.log("Card data copied to clipboard!");
+          }).catch((error) => {
+            console.error("Error copying card data to clipboard:", error);
+          });
+        }).catch((error) => {
+          console.error("Error reading card data:", error);
+        });
+      } else {
+        console.log("User declined to copy card data.");
+      }
+    }
+
+    // Função para colar os dados do cartão em um Card Writer
+    function pasteCardDataToWriter() {
+      // Ler os dados do cartão da área de transferência
+      navigator.clipboard.readText().then((cardDataString) => {
+        const cardData = JSON.parse(cardDataString);
+        // Escrever os dados do cartão no Card Writer
+        const cardWriter = new CardWriter();
+        cardWriter.writeCardData(cardData).then(() => {
+          console.log("Card data written to Card Writer!");
+        }).catch((error) => {
+          console.error("Error writing card data to Card Writer:", error);
+        });
+      }).catch((error) => {
+        console.error("Error reading card data from clipboard:", error);
+      });
+    }
+  </script>
+</body>
+</html>
